@@ -51,6 +51,13 @@ function initEvents(client, bot) {
 			console.error(err)
 		}
 	})
+	client.on("webhooklistner", ()=>{
+		try {
+			client.events.get("webhooklistner").func(bot)
+		} catch (err) {
+			console.error(err)
+		}
+	})
 	// client.on("channelCreate", (channel)=>{
 	// 	try {
 	// 		client.events.get("channelCreate").func(bot, channel);

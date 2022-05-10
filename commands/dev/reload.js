@@ -5,11 +5,11 @@ module.exports = {
 	category: "dev",
 	adminOnly: true,
 	description: "reloads the bot",
-	run: asyncbot => {
+	run: async bot => {
 		var { client, message, config } = bot
 		await client.loadCmds(client, true) //reload is true
-        await client.loadEvents(client, true)
-        await client.loadFunctions(client, true)
+		await client.loadEvents(client, true)
+		await client.loadFunctions(client, true)
 
 		message.channel.send(
 			new Discord.MessageEmbed()
@@ -22,8 +22,8 @@ module.exports = {
 						[ `\`${client.events.size}\``, `Events` ],
 						[ `\`${client.functions.size}\``, `Functions` ],
 					]),
-				)
+				),
 		)
 	},
-  }
+}
 

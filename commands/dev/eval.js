@@ -5,7 +5,7 @@ module.exports = {
 	category: "dev",
 	adminOnly: true,
 	description: "evaluates javascript code",
-	run: asyncbot => {
+	run: async bot => {
 		let { message, args, client, config, prefix } = bot
 		var code = message.content.replace(new RegExp(`${prefix}+ev(al)?`, "gi"), "").trim()
 		code = code.replace(/(^\`{3}js(\n|\s)*)|((\n|\s)*\`{3}$)/g, "") //allows the usage of the js code block in discord (```js...```)

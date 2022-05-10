@@ -5,9 +5,9 @@ module.exports = {
 	category: "info",
 	description: "Returns all commands, or one specific command's info",
 	usage: "[command | alias]",
-	run: asyncbot => {
+	run: async bot => {
 		let { client, message, args, prefix } = bot
-		if (args[0]) {
+		if (await args[0]) {
 			return getCMD(client, message, args[0])
 		} else {
 			return getAll(client, message, prefix)
@@ -61,9 +61,7 @@ function getCMD(client, message, input) {
 		client.commands.get(input.toLowerCase()) ||
 		client.aliases.get(input.toLowerCase())
 	let info = `No information found for command **${input.toLowerCase()}**`
-	if (!cmd)
-	//no specified command
-	{
+	if (!cmd) {
 		return message.channel.send(embed.setColor("RED").setDescription(info))
 	}
 

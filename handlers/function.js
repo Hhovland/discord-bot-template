@@ -8,7 +8,7 @@ module.exports = async(client, reload) => {
 
 	//For file loaded in "functions" variable, take that file.
 	for (let file of functions) {
-		if (reload) {
+		if (await reload) {
 			delete require.cache[require.resolve(`../functions/${file}`)]
 		}
 		let pull = require(`../functions/${file}`) //request file
