@@ -18,9 +18,11 @@
   },
   "homepage": "https://github.com/3chospirits/discord-bot-template#readme",
   "dependencies": {
+    "body-parser": "^1.20.0",
     "bufferutil": "^4.0.6",
     "discord.js": "^12.5.3",
     "encoding": "^0.1.13",
+    "express": "^4.18.1",
     "ffmpeg-static": "^5.0.0",
     "fs": "0.0.1-security",
     "got": "^11.8.3",
