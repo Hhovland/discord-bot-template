@@ -34,7 +34,7 @@ module.exports = (client, reload, bot) => {
 // https://gist.github.com/koad/316b265a91d933fd1b62dddfcc3ff584
 
 function initEvents(client, bot) {
-	client.on("message", message => {
+	client.on("messageCreate", message => {
 		if (!message.guild) {
 			return
 		}
@@ -47,13 +47,6 @@ function initEvents(client, bot) {
 	client.on("ready", ()=>{
 		try {
 			client.events.get("ready").func(bot)
-		} catch (err) {
-			console.error(err)
-		}
-	})
-	client.on("webhooklistner", ()=>{
-		try {
-			client.events.get("webhooklistner").func(bot)
 		} catch (err) {
 			console.error(err)
 		}

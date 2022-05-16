@@ -1,4 +1,5 @@
 const Discord = require("discord.js")
+const { MessageEmbed } = require('discord.js')
 const client = new Discord.Client({ disableMentions: "everyone" }) //remove the parameters being passed into
 
 const express = require('express')
@@ -8,7 +9,11 @@ const PORT = 8080
 const jsonParser = bodyParser.json()
 
 const botChannelId = "973236937404080129"
-const botChannel = client.channels.cache.get(botChannelId)
+const serverId = "483076478251171851"
+const guild = client.guilds.cache.get(serverId)
+
+const messageCache = new Map()
+const statusCache = new Map()
 
 const callStatusMap = new Map([
 	[ 'call.dialog.confirmed', { result: 'Call Answered', color: 60928 } ],
@@ -67,16 +72,11 @@ app.post("/", jsonParser, async function(req, res) {
 	try {
 		console.log("Pong")
 		const { body } = req
-		console.log("Body Read in.")
-		console.log(body.streamId)
-		var Exists = await embedChecker(body)
-		console.log("Exists read in.")
-		if (Exists != 0) { //EmbedChecker is a future function that checks previous postes in the bot channel (Last 50 messages) to see if the stream id exists.
-			await replaceEmbed(Exists, body)//Backtraces and edits an embed (Add logic that if you are replacing with a previous call step don't instead just record the original time)
-		} else {
-			await newEmbed(body) //Posts a new embed.
-		}
-		console.log("Message Posted")
+		const { streamId, type } = body
+		await msgStatusMaper(streamId, type)
+		console.log(statusCache)
+		await messageSend(body)
+		console.log(dateTime())
 		res.status(200).send("Webhook Recieved")
 	} catch (err) {
 		console.log("It broke somewhere")
@@ -94,89 +94,100 @@ client.loadEvents(client, false)
 module.exports = bot
 client.login(token)
 
-function embedChecker(body) {
-	console.log("Embed Check start")
-	Discord.channels.fetch(botChannelId).then(messages => {
-		console.log(`Received ${messages.size} messages`)
-		//Iterate through the messages here with the variable "messages".
-		messages.forEach(message => {
-			if (message.fields.streamId == body.streamId) {
-				console.log("ID")
-				return message.id
-			} else {
-				console.log("0")
-				return 0
-			}
-		})
-	})
-}
-
-function replaceEmbed(MessageId, { type: callStatus, id, streamId, payload }) {
-	const { toUri, fromUri, createdAt } = payload
-	let oldMessage = ""
+function createEditedEmbed({ type: id, streamId, payload }) {
+	const { toUri, fromUri } = payload
 	try {
-		botChannel.messages.fetch(MessageId).then(message => {
-			oldMessage = message
-		})
 		let supportTarget = OnSIPMap.get(toUri) || toUri
 		let customerTarget = OnSIPMap.get(fromUri) || fromUri
-
+		const time = dateTime()
 		const newEmbed = new Discord.MessageEmbed()
-			.setColor(callStatusMap.get(callStatus).color)
+			.setColor(callStatusMap.get(statusCache.get(streamId)).color)
 			.setTitle(`Call From: ${customerTarget}`)
 			.setDescription(`Id: ${id}`)
-			.setTimestamp(createdAt)
 			.addFields(
 				{
 					name: "streamId", value: streamId, inline: true,
 				},
 				{
-					name: "Call Status", value: callStatusMap.get(callStatus).result, inline: true,
-				},
-				{
 					name: "Call Directed At", value: supportTarget, inline: true,
 				},
 				{
-					name: "Timestamps", value: oldMessage.embeds.timestamp,
+					name: "Timestamps", value: time,
 				},
 			)
-		botChannel.messages.fetch(MessageId).then(message => {
-			message.delete()
-		})
-		botChannel.send({ embeds: [ newEmbed ] })
+		return newEmbed
 	} catch (err) {
 		console.error(err)
 	}
 }
 
-function newEmbed({ type: callStatus, id, streamId, payload }) {
-	const { toUri, fromUri, createdAt } = payload
+function createNewEmbed({ type: id, streamId, payload }) {
+	const { toUri, fromUri } = payload
 	try {
 		let supportTarget = OnSIPMap.get(toUri) || toUri
 		let customerTarget = OnSIPMap.get(fromUri) || fromUri
-
-		const newEmbed = new Discord.MessageEmbed()
-			.setColor(callStatusMap.get(callStatus).color)
+		const time = dateTime()
+		const newEmbed = new MessageEmbed()
+			.setColor(callStatusMap.get(statusCache.get(streamId)).color)
 			.setTitle(`Call From: ${customerTarget}`)
 			.setDescription(`Id: ${id}`)
-			.setTimestamp(createdAt)
 			.addFields(
 				{
 					name: "streamId", value: streamId, inline: true,
 				},
 				{
-					name: "Call Status", value: callStatusMap.get(callStatus).result, inline: true,
-				},
-				{
 					name: "Call Directed At", value: supportTarget, inline: true,
 				},
+				{
+					name: "Timestamps", value: time,
+				},
 			)
-		botChannel.send({ embeds: [ newEmbed ] })
+		return newEmbed
 	} catch (err) {
 		console.error(err)
+	}
+}
+
+async function messageSend(body) {
+	const channel = await client.channels.fetch(botChannelId)
+	const { streamId } = body
+	if (!channel) {
+		return
+	} // if the channel is not in the cache return and do nothing
+	var embed
+	if (messageCache.has(streamId)) {
+		embed = createEditedEmbed(body)
+		console.log(embed)
+		const fetchedMessage = channel.messages.fetch(messageCache.get(streamId))
+		console.log(fetchedMessage)
+		await fetchedMessage.edit(embed)
+	} else {
+		embed = createNewEmbed(body)
+		console.log(embed)
+		return channel.send(embed).then(sent => {
+			let id = sent.id
+			messageCache.set(streamId, id)
+		})
+	}
+}
+
+function dateTime() {
+	var datum = +new Date()
+	return new Date(datum)
+}
+
+function msgStatusMaper(streamId, callStatus) {
+	if (callStatus == "call.dialog.terminated") {
+		return statusCache.set(streamId, callStatus)
+	} else if (callStatus == "call.dialog.failed") {
+		return statusCache.set(streamId, callStatus)
+	} else if (callStatus == "call.dialog.confirmed") {
+		return statusCache.set(streamId, callStatus)
+	} else if (callStatus == "call.dialog.created") {
+		return statusCache.set(streamId.callStatus)
 	}
 }
 
 app.listen(PORT, function() {
-	console.log('Express server listening on port ', PORT); // eslint-disable-line
+	console.log('Express server listening on port ', PORT)
 })
