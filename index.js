@@ -10,10 +10,10 @@ const jsonParser = bodyParser.json()
 
 const botChannelId = "973236937404080129"
 const serverId = "483076478251171851"
-const guild = client.guilds.cache.get(serverId)
 
 const messageCache = new Map()
 const statusCache = new Map()
+const timeCache = new Map()
 
 const callStatusMap = new Map([
 	[ 'call.dialog.confirmed', { result: 'Call Answered', color: 60928 } ],
@@ -70,13 +70,10 @@ client.categories = fs.readdirSync("./commands/")
 
 app.post("/", jsonParser, async function(req, res) {
 	try {
-		console.log("Pong")
 		const { body } = req
 		const { streamId, type } = body
 		await msgStatusMaper(streamId, type)
-		console.log(statusCache)
 		await messageSend(body)
-		console.log(dateTime())
 		res.status(200).send("Webhook Recieved")
 	} catch (err) {
 		console.log("It broke somewhere")
@@ -94,25 +91,22 @@ client.loadEvents(client, false)
 module.exports = bot
 client.login(token)
 
-function createEditedEmbed({ type: id, streamId, payload }) {
+async function createEditedEmbed({ type: id, streamId, payload, type }) {
 	const { toUri, fromUri } = payload
 	try {
 		let supportTarget = OnSIPMap.get(toUri) || toUri
 		let customerTarget = OnSIPMap.get(fromUri) || fromUri
-		const time = dateTime()
+		await timeMapper(streamId, type, timeCache.get(streamId))
 		const newEmbed = new Discord.MessageEmbed()
 			.setColor(callStatusMap.get(statusCache.get(streamId)).color)
 			.setTitle(`Call From: ${customerTarget}`)
-			.setDescription(`Id: ${id}`)
+			.setDescription(`Id: ${streamId}`)
 			.addFields(
-				{
-					name: "streamId", value: streamId, inline: true,
-				},
 				{
 					name: "Call Directed At", value: supportTarget, inline: true,
 				},
 				{
-					name: "Timestamps", value: time,
+					name: "Timestamps", value: timeCache.get(streamId),
 				},
 			)
 		return newEmbed
@@ -121,25 +115,22 @@ function createEditedEmbed({ type: id, streamId, payload }) {
 	}
 }
 
-function createNewEmbed({ type: id, streamId, payload }) {
+async function createNewEmbed({ type: id, streamId, payload, type }) {
 	const { toUri, fromUri } = payload
 	try {
 		let supportTarget = OnSIPMap.get(toUri) || toUri
 		let customerTarget = OnSIPMap.get(fromUri) || fromUri
-		const time = dateTime()
+		await timeMapper(streamId, type)
 		const newEmbed = new MessageEmbed()
 			.setColor(callStatusMap.get(statusCache.get(streamId)).color)
 			.setTitle(`Call From: ${customerTarget}`)
-			.setDescription(`Id: ${id}`)
+			.setDescription(`Id: ${streamId}`)
 			.addFields(
-				{
-					name: "streamId", value: streamId, inline: true,
-				},
 				{
 					name: "Call Directed At", value: supportTarget, inline: true,
 				},
 				{
-					name: "Timestamps", value: time,
+					name: "Timestamps", value: timeCache.get(streamId),
 				},
 			)
 		return newEmbed
@@ -150,23 +141,27 @@ function createNewEmbed({ type: id, streamId, payload }) {
 
 async function messageSend(body) {
 	const channel = await client.channels.fetch(botChannelId)
+	const guild = client.guilds.cache.get(serverId)
+	const serverChannel = guild.channels.cache.find(c => c.id === botChannelId && c.type === 'text')
 	const { streamId } = body
 	if (!channel) {
 		return
 	} // if the channel is not in the cache return and do nothing
 	var embed
 	if (messageCache.has(streamId)) {
-		embed = createEditedEmbed(body)
-		console.log(embed)
-		const fetchedMessage = channel.messages.fetch(messageCache.get(streamId))
-		console.log(fetchedMessage)
-		await fetchedMessage.edit(embed)
+		embed = await createEditedEmbed(body)
+		serverChannel.messages.fetch(messageCache.get(streamId)).then(message => {
+			message.edit(embed)
+		}).catch(err => {
+			console.error(err)
+		})
 	} else {
-		embed = createNewEmbed(body)
-		console.log(embed)
+		embed = await createNewEmbed(body)
 		return channel.send(embed).then(sent => {
 			let id = sent.id
 			messageCache.set(streamId, id)
+		}).catch(err => {
+			console.error(err)
 		})
 	}
 }
@@ -185,6 +180,22 @@ function msgStatusMaper(streamId, callStatus) {
 		return statusCache.set(streamId, callStatus)
 	} else if (callStatus == "call.dialog.created") {
 		return statusCache.set(streamId.callStatus)
+	}
+}
+
+function timeMapper(streamId, callStatus, times = [ "Created: ", "Confirmed: ", "Terminated: ", "Failed:" ]) {
+	if (callStatus == "call.dialog.terminated") {
+		times[2] = times[2] + dateTime()
+		return timeCache.set(streamId, times)
+	} else if (callStatus == "call.dialog.failed") {
+		times[3] = times[3] + dateTime()
+		return timeCache.set(streamId, times)
+	} else if (callStatus == "call.dialog.confirmed") {
+		times[1] = times[1] + dateTime()
+		return timeCache.set(streamId, times)
+	} else if (callStatus == "call.dialog.created") {
+		times[0] = times[0] + dateTime()
+		return timeCache.set(streamId, times)
 	}
 }
 
