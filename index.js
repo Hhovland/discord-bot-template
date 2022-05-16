@@ -164,9 +164,7 @@ async function messageSend(body) {
 			console.error(err)
 		})
 	}
-	console.log(statusCache)
 	cacheDeleteCondition(streamId, body.type)
-	console.log(statusCache)
 }
 
 function dateTime() {
