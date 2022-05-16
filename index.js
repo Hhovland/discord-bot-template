@@ -90,7 +90,7 @@ client.loadEvents(client, false)
 
 module.exports = bot
 client.login(token)
-
+//eslint-disable-next-line
 async function createEditedEmbed({ type: id, streamId, payload, type }) {
 	const { toUri, fromUri } = payload
 	try {
@@ -114,7 +114,7 @@ async function createEditedEmbed({ type: id, streamId, payload, type }) {
 		console.error(err)
 	}
 }
-
+//eslint-disable-next-line
 async function createNewEmbed({ type: id, streamId, payload, type }) {
 	const { toUri, fromUri } = payload
 	try {
