@@ -164,6 +164,9 @@ async function messageSend(body) {
 			console.error(err)
 		})
 	}
+	console.log(statusCache)
+	cacheDeleteCondition(streamId, body.type)
+	console.log(statusCache)
 }
 
 function dateTime() {
@@ -196,6 +199,18 @@ function timeMapper(streamId, callStatus, times = [ "Created: ", "Confirmed: ", 
 	} else if (callStatus == "call.dialog.created") {
 		times[0] = times[0] + dateTime()
 		return timeCache.set(streamId, times)
+	}
+}
+
+function cacheDeleteCondition(streamId, callStatus) {
+	if (callStatus == "call.dialog.terminated") {
+		statusCache.delete(streamId)
+		timeCache.delete(streamId)
+		messageCache.delete(streamId)
+	} else if (callStatus == "call.dialog.failed") {
+		statusCache.delete(streamId)
+		timeCache.delete(streamId)
+		messageCache.delete(streamId)
 	}
 }
 
